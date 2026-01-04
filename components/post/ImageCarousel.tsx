@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 
 interface ImageCarouselProps {
   images: string[];
-  onImageClick: (image: string) => void;
+  onImageClick: (index: number, image: string) => void;
 }
 
 const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, onImageClick }) => {
@@ -12,9 +12,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, onImageClick }) =
   const isDragging = useRef(false);
   const startX = useRef(0);
   const scrollLeftStart = useRef(0);
-  const dragThreshold = 5; // pixels pour différencier clic et drag
+  const dragDistance = useRef(0);
 
-  // Synchronisation de l'index au scroll
   const handleScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, clientWidth } = scrollRef.current;
@@ -25,7 +24,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, onImageClick }) =
     }
   };
 
-  // Navigation par flèches
   const scrollTo = (index: number) => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({
@@ -35,14 +33,13 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, onImageClick }) =
     }
   };
 
-  // Support du drag à la souris pour desktop
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!scrollRef.current) return;
     isDragging.current = true;
     startX.current = e.pageX - scrollRef.current.offsetLeft;
     scrollLeftStart.current = scrollRef.current.scrollLeft;
+    dragDistance.current = 0;
     
-    // On retire temporairement le snap pour un drag fluide
     scrollRef.current.style.scrollSnapType = 'none';
     scrollRef.current.style.scrollBehavior = 'auto';
   };
@@ -51,47 +48,32 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, onImageClick }) =
     if (!isDragging.current || !scrollRef.current) return;
     e.preventDefault();
     const x = e.pageX - scrollRef.current.offsetLeft;
-    const walk = (x - startX.current) * 1.5;
+    const walk = (x - startX.current) * 1.2;
+    dragDistance.current = Math.abs(x - startX.current);
     scrollRef.current.scrollLeft = scrollLeftStart.current - walk;
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = () => {
     if (!isDragging.current || !scrollRef.current) return;
     isDragging.current = false;
     
-    // Rétablissement du snap
     scrollRef.current.style.scrollSnapType = 'x mandatory';
     scrollRef.current.style.scrollBehavior = 'smooth';
 
-    const endX = e.pageX - scrollRef.current.offsetLeft;
-    const distance = Math.abs(endX - startX.current);
-
-    // Si c'est un clic (peu de mouvement)
-    if (distance < dragThreshold) {
-      const clickIndex = Math.round(scrollRef.current.scrollLeft / scrollRef.current.clientWidth);
-      onImageClick(images[clickIndex]);
+    if (dragDistance.current < 10) {
+      onImageClick(activeIndex, images[activeIndex]);
     } else {
-      // Force le snap sur l'image la plus proche après le drag
       const newIndex = Math.round(scrollRef.current.scrollLeft / scrollRef.current.clientWidth);
-      scrollTo(newIndex);
+      setActiveIndex(newIndex);
     }
   };
 
   const handleMouseLeave = () => {
-    if (isDragging.current) {
-      isDragging.current = false;
-      if (scrollRef.current) {
-        scrollRef.current.style.scrollSnapType = 'x mandatory';
-        scrollRef.current.style.scrollBehavior = 'smooth';
-        const newIndex = Math.round(scrollRef.current.scrollLeft / scrollRef.current.clientWidth);
-        scrollTo(newIndex);
-      }
-    }
+    if (isDragging.current) handleMouseUp();
   };
 
   return (
     <div className="relative group w-full aspect-video rounded-[22px] overflow-hidden border border-gray-100 shadow-sm bg-black select-none">
-      {/* Container Défilant - Utilisation du snap natif pour mobile */}
       <div 
         ref={scrollRef}
         onScroll={handleScroll}
@@ -99,7 +81,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, onImageClick }) =
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory hide-scrollbar cursor-grab active:cursor-grabbing touch-pan-x"
+        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory hide-scrollbar cursor-grab active:cursor-grabbing touch-pan-x scroll-smooth"
         style={{ scrollSnapStop: 'always' }}
       >
         {images.map((img, idx) => (
@@ -117,7 +99,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, onImageClick }) =
         ))}
       </div>
 
-      {/* Boutons de navigation (Visibles au survol sur desktop) */}
       {images.length > 1 && (
         <>
           <button 
@@ -139,7 +120,6 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images, onImageClick }) =
         </>
       )}
 
-      {/* Indicateurs visuels (Dots) style SWA. */}
       {images.length > 1 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center space-x-2 px-3 py-2 rounded-full bg-black/30 backdrop-blur-md pointer-events-none z-10">
           {images.map((_, idx) => (

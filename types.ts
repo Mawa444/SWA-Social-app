@@ -5,18 +5,32 @@ export interface User {
   handle: string;
   avatar: string;
   isVerified?: boolean;
+  activityScore?: number;
 }
 
 export interface PollOption {
+  id: string;
   label: string;
   votes: number;
+  image?: string;
+  sublabel?: string;
+  bio?: string;
+  achievements?: string[];
+  momentum?: number; // Votes par seconde
 }
 
+export type PollType = 'STANDARD' | 'PETITION' | 'BINARY' | 'AWARD';
+
 export interface Poll {
+  id: string;
+  type: PollType;
   question: string;
   options: PollOption[];
   totalVotes: number;
+  goal?: number;
+  category?: string;
   expiresAt: string;
+  competitionId?: string;
 }
 
 export interface Post {
@@ -24,8 +38,8 @@ export interface Post {
   author: User;
   timestamp: string;
   content: string;
-  image?: string; // Gardé pour compatibilité ascendante si nécessaire
-  images?: string[]; // Support multi-images
+  image?: string;
+  images?: string[];
   video?: string;
   poll?: Poll;
   link?: {
@@ -43,4 +57,21 @@ export interface Post {
 export interface Story {
   id: string;
   user: User;
+}
+
+export interface Competition {
+  id: string;
+  title: string;
+  description: string;
+  banner: string;
+  logo?: string;
+  startDate: string;
+  endDate: string;
+  totalVotes: number;
+  categories: {
+    id: string;
+    name: string;
+    icon: string;
+    pollId: string;
+  }[];
 }

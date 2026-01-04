@@ -7,7 +7,7 @@ interface TabsProps {
 }
 
 const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
-  const tabs = ['Pour vous', 'Abonnements', 'Groupes'];
+  const tabs = ['VOIX', 'SOCIAL', 'CLUBS'];
   
   return (
     <nav className="flex border-b border-gray-100 bg-white w-full h-[57px]">
@@ -20,13 +20,13 @@ const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
           }`}
         >
           <div className="relative inline-flex items-center">
-            <span className="text-[17px] font-bold tracking-tight">{tab}</span>
-            {tab === 'Groupes' && (
+            <span className="text-[15px] font-[900] tracking-wider">{tab}</span>
+            {tab === 'CLUBS' && (
               <span className="absolute -top-1 -right-1.5 w-[9px] h-[9px] bg-[#EF4444] rounded-full border-2 border-white shadow-sm"></span>
             )}
           </div>
           
-          {/* Indicateur actif bleu épais (5px) comme sur le wireframe */}
+          {/* Indicateur actif bleu épais (5px) */}
           {activeTab === tab && (
             <div className="absolute bottom-0 left-0 right-0 h-[5px] bg-[#5B50FF] rounded-t-full"></div>
           )}
