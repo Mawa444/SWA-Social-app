@@ -1,0 +1,8 @@
+{
+  "name": "SWA. Social App",
+  "description": "A high-fidelity social information sharing platform based on the SWA. design wireframe, featuring news feeds, stories, and interactive social elements.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

@@ -1,0 +1,39 @@
+
+import React from 'react';
+
+interface TabsProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+const Tabs: React.FC<TabsProps> = ({ activeTab, onTabChange }) => {
+  const tabs = ['Pour vous', 'Abonnements', 'Groupes'];
+  
+  return (
+    <nav className="flex border-b border-gray-100 bg-white w-full h-[57px]">
+      {tabs.map((tab) => (
+        <button
+          key={tab}
+          onClick={() => onTabChange(tab)}
+          className={`flex-1 flex flex-col items-center justify-center relative transition-colors ${
+            activeTab === tab ? 'text-black' : 'text-[#64748B]'
+          }`}
+        >
+          <div className="relative inline-flex items-center">
+            <span className="text-[17px] font-bold tracking-tight">{tab}</span>
+            {tab === 'Groupes' && (
+              <span className="absolute -top-1 -right-1.5 w-[9px] h-[9px] bg-[#EF4444] rounded-full border-2 border-white shadow-sm"></span>
+            )}
+          </div>
+          
+          {/* Indicateur actif bleu épais (5px) comme sur le wireframe */}
+          {activeTab === tab && (
+            <div className="absolute bottom-0 left-0 right-0 h-[5px] bg-[#5B50FF] rounded-t-full"></div>
+          )}
+        </button>
+      ))}
+    </nav>
+  );
+};
+
+export default Tabs;
