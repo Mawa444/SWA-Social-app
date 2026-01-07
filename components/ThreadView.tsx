@@ -40,7 +40,8 @@ interface ThreadViewProps {
   onPublishQuote?: (comment: string, post: Post) => void;
 }
 
-const REACTIONS_LIST = ['❤️', '🙏', '😂', '😱', '😡', '💩', '😭', '🎁'];
+// Ordre des emojis mis à jour selon la demande : ❤️ 🙏 😂 😱 😭 😡 💩 🎁
+const REACTIONS_LIST = ['❤️', '🙏', '😂', '😱', '😭', '😡', '💩', '🎁'];
 
 const ThreadView: React.FC<ThreadViewProps> = ({ 
   post, 
@@ -55,8 +56,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({
   };
 
   const [comments, setComments] = useState<Comment[]>([
-    { id: '1', user: 'Lina_92', handle: '@LINA_92', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200', text: "Totalement d'accord avec cette analyse ! 🚀 Le futur est décentralisé.", time: '12/05/24 14:20', othersReactions: ['❤️', '🎁'] },
-    { id: '2', user: 'MarcXY', handle: '@MARC_XY', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200', text: "On attendait ce genre de contenu depuis longtemps. Merci pour l'info !", time: '12/05/24 14:35', othersReactions: ['🙏'] },
+    { id: '1', user: 'Lina Horizon', handle: '@lina_92', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200', text: "Totalement d'accord avec cette analyse ! 🚀 Le futur est décentralisé.", time: '12/05/24 14:20', othersReactions: ['❤️', '🎁'] },
+    { id: '2', user: 'Marc XY', handle: '@marc_xy', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200', text: "On attendait ce genre de contenu depuis longtemps. Merci pour l'info !", time: '12/05/24 14:35', othersReactions: ['🙏'] },
   ]);
 
   const [postReaction, setPostReaction] = useState<string | null>(null);
@@ -249,7 +250,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({
     const newComment: Comment = {
       id: Date.now().toString(),
       user: 'Moi',
-      handle: '@MOI',
+      handle: '@moi',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
       text: inputText,
       time: formatTime(new Date()),
@@ -359,13 +360,13 @@ const ThreadView: React.FC<ThreadViewProps> = ({
         }
       `}</style>
 
-      {/* Header */}
+      {/* Header Discussion */}
       <div className="flex items-center justify-between px-6 py-6 border-b-2 border-gray-100 bg-white sticky top-0 z-[100] shrink-0">
         <div className="flex items-center space-x-6">
           <button onClick={onBack} className="p-3 bg-gray-50 rounded-full active:scale-90 transition-transform">
             <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <h2 className="text-3xl font-[1000] uppercase tracking-tighter text-black">DISCUSSION</h2>
+          <h2 className="text-3xl font-[1000] uppercase tracking-tighter text-black leading-none">DISCUSSION</h2>
         </div>
         <div className="bg-black px-5 py-2.5 rounded-full flex items-center space-x-3">
            <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
@@ -374,7 +375,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-8 space-y-12 pb-60 hide-scrollbar">
-        {/* Main Post */}
+        {/* Main Post Bubble */}
         <div className="max-w-4xl mx-auto w-full relative">
            <div 
              id={`bubble-${post.id}`}
@@ -403,7 +404,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({
                       ))}
                     </div>
                     <div className="picker-divider" />
-                    <button onClick={(e) => handleTrashClick(e, post.id)} className="dock-item text-gray-400 hover:text-red-500 transition-colors">
+                    <button onClick={(e) => handleTrashClick(e, post.id)} className="dock-item text-black hover:text-red-500 transition-colors">
                       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                     </button>
                   </>
@@ -412,16 +413,16 @@ const ThreadView: React.FC<ThreadViewProps> = ({
            )}
         </div>
 
-        {/* Global Stats */}
+        {/* Audit Stats Board */}
         <div className="max-w-4xl mx-auto w-full">
           <div className="bg-white rounded-[32px] border-2 border-gray-100 p-8 flex items-center justify-between">
             <div className="flex items-center space-x-12">
                <div className="flex flex-col">
-                  <span className="text-[11px] font-black uppercase text-gray-400 mb-2 tracking-widest">Messages</span>
+                  <span className="text-[11px] font-black uppercase text-slate-600 mb-2 tracking-widest">Messages</span>
                   <span className="text-4xl font-[1000] text-green-600 leading-none">{stats.messageCount}</span>
                </div>
                <div className="flex flex-col">
-                  <span className="text-[11px] font-black uppercase text-gray-400 mb-2 tracking-widest">Votes</span>
+                  <span className="text-[11px] font-black uppercase text-slate-600 mb-2 tracking-widest">Votes</span>
                   <span className="text-4xl font-[1000] text-[#5B50FF] leading-none">{stats.totalReactions}</span>
                </div>
             </div>
@@ -442,17 +443,16 @@ const ThreadView: React.FC<ThreadViewProps> = ({
           <div className="mt-14 space-y-16">
             {comments.map((comment) => (
               <div key={comment.id} className={`flex flex-col ${comment.isMe ? 'items-end' : 'items-start'}`}>
-                {!comment.isMe && (
-                  <div className="flex items-center space-x-4 mb-4 ml-1">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200">
-                      <img src={comment.avatar} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[14px] font-[1000] uppercase text-black">{comment.user}</span>
-                      <span className="text-[10px] font-black text-gray-400 uppercase leading-none tracking-widest">{comment.time}</span>
-                    </div>
+                {/* Identity Header: Name (Bold/Black) + Handle (@ lowercase/black) */}
+                <div className={`flex items-center space-x-4 mb-3 ${comment.isMe ? 'flex-row-reverse space-x-reverse mr-1' : 'ml-1'}`}>
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
+                    <img src={comment.avatar} className="w-full h-full object-cover" />
                   </div>
-                )}
+                  <div className={`flex flex-col ${comment.isMe ? 'items-end' : 'items-start'}`}>
+                    <span className="text-[15px] font-[1000] uppercase text-black leading-none">{comment.user}</span>
+                    <span className="text-[13px] font-medium text-black lowercase tracking-normal mt-1">{comment.handle}</span>
+                  </div>
+                </div>
 
                 <div className="relative w-full flex flex-col" style={{ alignItems: comment.isMe ? 'flex-end' : 'flex-start' }}>
                   {activeReactionPickerId === comment.id && !explodingId && (
@@ -473,7 +473,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({
                             ))}
                           </div>
                           <div className="picker-divider" />
-                          <button onClick={(e) => handleTrashClick(e, comment.id)} className="dock-item text-gray-400 hover:text-red-500 transition-colors">
+                          <button onClick={(e) => handleTrashClick(e, comment.id)} className="dock-item text-black hover:text-red-500 transition-colors">
                             <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                           </button>
                          </>
@@ -491,7 +491,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({
                        {comment.myReaction && <div className="bg-white border-2 border-[#5B50FF] rounded-full px-2.5 py-1 text-[14px] font-black z-10 shadow-sm">{comment.myReaction}</div>}
                     </div>
                   </div>
-                  <span className={`text-[9px] font-black text-gray-400 uppercase mt-2 tracking-widest ${comment.isMe ? 'text-right' : 'text-left'}`}>{comment.time}</span>
+                  {/* Timestamp anchored to the corner of the bubble */}
+                  <span className={`text-[10px] font-black text-slate-600 uppercase mt-2 tracking-widest ${comment.isMe ? 'text-right' : 'text-left'}`}>{comment.time}</span>
                 </div>
               </div>
             ))}
@@ -499,13 +500,13 @@ const ThreadView: React.FC<ThreadViewProps> = ({
         </div>
       </div>
 
-      {/* Input Bar */}
+      {/* Persistent Input Bar */}
       <div className="bg-white border-t-2 border-gray-200 p-6 pb-12 relative z-[200]">
-        <div className="max-w-4xl mx-auto space-y-5">
+        <div className="max-w-4xl mx-auto w-full">
           {replyingTo && (
-            <div className="flex items-center justify-between bg-gray-50 px-6 py-4 rounded-2xl border border-gray-200 animate-in slide-in-from-bottom-2">
-               <span className="text-[11px] font-black uppercase tracking-widest text-[#5B50FF]">Réponse à @{replyingTo.user}</span>
-               <button onClick={() => setReplyingTo(null)} className="p-1 text-gray-400 hover:text-black transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <div className="flex items-center justify-between bg-gray-50 px-6 py-4 rounded-2xl border border-gray-200 animate-in slide-in-from-bottom-2 mb-4">
+               <span className="text-[11px] font-black uppercase tracking-widest text-[#5B50FF]">Réponse à {replyingTo.handle}</span>
+               <button onClick={() => setReplyingTo(null)} className="p-1 text-slate-500 hover:text-black transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
           )}
           <div className="flex items-end space-x-4">
