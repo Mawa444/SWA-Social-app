@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Post, User } from '../types';
 import PostItem from './PostItem';
 
@@ -10,11 +10,23 @@ interface Comment {
   avatar: string;
   text: string;
   time: string;
-  likes: number;
-  reactions: string[];
+  myReaction?: string; 
+  othersReactions: string[]; 
   replyToId?: string;
   isMe?: boolean;
-  isLiked?: boolean;
+}
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  color: string;
+  alpha: number;
+  life: number;
+  rotation: number;
+  vr: number;
 }
 
 interface ThreadViewProps {
@@ -28,52 +40,200 @@ interface ThreadViewProps {
   onPublishQuote?: (comment: string, post: Post) => void;
 }
 
-const REACTIONS_LIST = ['❤️', '😂', '🔥', '👏', '😢', '👍'];
+const REACTIONS_LIST = ['❤️', '🙏', '😂', '😱', '😡', '💩', '😭', '🎁'];
 
 const ThreadView: React.FC<ThreadViewProps> = ({ 
   post, 
   onBack,
   onDeletePost,
-  onArchivePost,
-  onHideAuthor,
-  onProfileClick,
-  onExploreHub,
-  onPublishQuote
+  onProfileClick
 }) => {
+  const formatTime = (date: Date) => {
+    return date.toLocaleString('fr-FR', { 
+      day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' 
+    });
+  };
+
   const [comments, setComments] = useState<Comment[]>([
-    { id: '1', user: 'Lina_92', handle: '@Lina_92', avatar: 'https://picsum.photos/seed/lina/100/100', text: "Totalement d'accord avec cette analyse ! 🚀 Le futur est décentralisé.", time: '12m', likes: 12, reactions: ['🔥'] },
-    { id: '2', user: 'MarcXY', handle: '@MarcXY', avatar: 'https://picsum.photos/seed/marc/100/100', text: "On attendait ce genre de contenu depuis longtemps. Merci pour l'info !", time: '5m', likes: 4, reactions: ['❤️'] },
-    { id: '3', user: 'CoreUser', handle: '@CoreUser', avatar: 'https://picsum.photos/seed/core/100/100', text: "Est-ce applicable au marché actuel ?", time: '2m', likes: 0, reactions: [], replyToId: '1' },
+    { id: '1', user: 'Lina_92', handle: '@LINA_92', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200', text: "Totalement d'accord avec cette analyse ! 🚀 Le futur est décentralisé.", time: '12/05/24 14:20', othersReactions: ['❤️', '🎁'] },
+    { id: '2', user: 'MarcXY', handle: '@MARC_XY', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200', text: "On attendait ce genre de contenu depuis longtemps. Merci pour l'info !", time: '12/05/24 14:35', othersReactions: ['🙏'] },
   ]);
 
+  const [postReaction, setPostReaction] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const [inputText, setInputText] = useState('');
-  const [activeReactionId, setActiveReactionId] = useState<string | null>(null);
-  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [activeReactionPickerId, setActiveReactionPickerId] = useState<string | null>(null);
+  const [pressingId, setPressingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [explodingId, setExplodingId] = useState<string | null>(null);
   
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particles = useRef<Particle[]>([]);
+  const requestRef = useRef<number>(null);
+  const longPressTimer = useRef<number | null>(null);
+  const isLongPressActive = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const commentsSectionRef = useRef<HTMLDivElement>(null);
+
+  const stats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    REACTIONS_LIST.forEach(emoji => counts[emoji] = 0);
+    if (postReaction) counts[postReaction]++;
+    comments.forEach(c => {
+      if (c.myReaction) counts[c.myReaction]++;
+      c.othersReactions.forEach(r => { if (counts[r] !== undefined) counts[r]++; });
+    });
+    return {
+      reactions: counts,
+      messageCount: comments.length,
+      totalReactions: Object.values(counts).reduce((a, b) => a + b, 0)
+    };
+  }, [comments, postReaction]);
+
+  // Particle System Animation Loop
+  const animateParticles = (time: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    particles.current.forEach((p, i) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy -= 0.05; // Vent ascendant
+      p.vx += 0.02; // Vent latéral
+      p.rotation += p.vr;
+      p.life -= 0.01;
+      p.alpha = Math.max(0, p.life);
+
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      ctx.restore();
+    });
+
+    particles.current = particles.current.filter(p => p.life > 0);
+    requestRef.current = requestAnimationFrame(animateParticles);
+  };
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    requestRef.current = requestAnimationFrame(animateParticles);
+    const handleResize = () => {
+      if (canvasRef.current) {
+        canvasRef.current.width = window.innerWidth;
+        canvasRef.current.height = window.innerHeight;
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
-  const handleReply = (comment: Comment) => {
-    setReplyingTo(comment);
-    inputRef.current?.focus();
+  const triggerExplosion = (targetId: string, color: string) => {
+    const element = document.getElementById(`bubble-${targetId}`);
+    if (!element) return;
+
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    for (let i = 0; i < 150; i++) {
+      particles.current.push({
+        x: rect.left + Math.random() * rect.width,
+        y: rect.top + Math.random() * rect.height,
+        vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.5) * 12,
+        size: Math.random() * 8 + 2,
+        color: color,
+        alpha: 1,
+        life: Math.random() * 0.8 + 0.4,
+        rotation: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.2
+      });
+    }
+
+    setExplodingId(targetId);
+    if (window.navigator?.vibrate) window.navigator.vibrate([40, 30, 100]);
   };
 
-  const toggleLike = (id: string) => {
-    setComments(prev => prev.map(c => 
-      c.id === id ? { ...c, isLiked: !c.isLiked, likes: c.isLiked ? c.likes - 1 : c.likes + 1 } : c
-    ));
+  const toggleReaction = (targetId: string, emoji: string) => {
+    if (targetId === post.id) {
+      setPostReaction(prev => prev === emoji ? null : emoji);
+    } else {
+      setComments(prev => prev.map(c => 
+        c.id === targetId ? { ...c, myReaction: c.myReaction === emoji ? undefined : emoji } : c
+      ));
+    }
+    closePicker();
   };
 
-  const addReaction = (id: string, emoji: string) => {
-    setComments(prev => prev.map(c => 
-      c.id === id ? { ...c, reactions: Array.from(new Set([...c.reactions, emoji])) } : c
-    ));
-    setActiveReactionId(null);
+  const closePicker = () => {
+    setActiveReactionPickerId(null);
+    setConfirmDeleteId(null);
+  };
+
+  const handleConfirmDelete = (targetId: string, isMe: boolean = false) => {
+    if (confirmDeleteId !== targetId) return;
+
+    const color = isMe ? '#5B50FF' : '#FFFFFF';
+    triggerExplosion(targetId, color);
+
+    // Attendre la fin de la déflagration visuelle pour retirer du state
+    setTimeout(() => {
+      if (targetId === post.id) {
+        if (onDeletePost) {
+          onDeletePost(post.id);
+          onBack();
+        }
+      } else {
+        setComments(prev => prev.filter(c => c.id !== targetId));
+      }
+      setExplodingId(null);
+      setConfirmDeleteId(null);
+      setActiveReactionPickerId(null);
+    }, 400);
+  };
+
+  // Add missing trash icon handler to show delete confirmation
+  const handleTrashClick = (e: React.MouseEvent, targetId: string) => {
+    e.stopPropagation();
+    setConfirmDeleteId(targetId);
+  };
+
+  // Add missing cancel delete handler to reset confirmation state
+  const cancelDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmDeleteId(null);
+  };
+
+  const startPress = (id: string, comment?: Comment) => {
+    if (explodingId) return;
+    setPressingId(id);
+    isLongPressActive.current = false;
+    longPressTimer.current = window.setTimeout(() => {
+      isLongPressActive.current = true;
+      if (comment) setReplyingTo(comment);
+      setPressingId(null);
+    }, 450); 
+  };
+
+  const endPress = (id: string) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (!isLongPressActive.current && pressingId === id) {
+      setActiveReactionPickerId(prev => prev === id ? null : id);
+      setConfirmDeleteId(null);
+    }
+    setPressingId(null);
   };
 
   const handleSendMessage = () => {
@@ -81,12 +241,11 @@ const ThreadView: React.FC<ThreadViewProps> = ({
     const newComment: Comment = {
       id: Date.now().toString(),
       user: 'Moi',
-      handle: '@Moi',
-      avatar: 'https://picsum.photos/seed/me/100/100',
+      handle: '@MOI',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
       text: inputText,
-      time: 'À l\'instant',
-      likes: 0,
-      reactions: [],
+      time: formatTime(new Date()),
+      othersReactions: [],
       isMe: true,
       replyToId: replyingTo?.id
     };
@@ -95,198 +254,251 @@ const ThreadView: React.FC<ThreadViewProps> = ({
     setReplyingTo(null);
   };
 
-  const scrollToComments = () => {
-    commentsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
-    <div className="flex flex-col h-screen bg-white w-full overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#F1F3F5] w-full overflow-hidden relative">
+      <canvas 
+        ref={canvasRef} 
+        className="fixed inset-0 pointer-events-none z-[1000]"
+      />
+
       <style>{`
-        .bubble-other { border-radius: 24px 24px 24px 4px; }
-        .bubble-me { border-radius: 24px 24px 4px 24px; background: #5B50FF; color: white; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .bubble-other { 
+          border-radius: 28px 28px 28px 6px; 
+          background: #FFFFFF;
+          border: 2px solid #EEE;
+          transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+        }
+        .bubble-me { 
+          border-radius: 28px 28px 6px 28px; 
+          background: #5B50FF; 
+          color: white;
+          border: 2px solid #5B50FF;
+          transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+        }
+        .bubble-pressing { transform: scale(0.98); }
+        .bubble-exploding { 
+          opacity: 0 !important; 
+          transform: scale(1.1) !important;
+          pointer-events: none;
+        }
+        
+        .danger-target {
+          border-color: #EF4444 !important;
+          box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2), 0 10px 30px rgba(239, 68, 68, 0.1);
+          animation: danger-pulse 1.5s infinite ease-in-out, danger-shake 0.4s ease-in-out;
+          z-index: 10;
+        }
+
+        @keyframes danger-pulse {
+          0% { border-color: #EF4444; }
+          50% { border-color: #B91C1C; }
+          100% { border-color: #EF4444; }
+        }
+
+        @keyframes danger-shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-2px); }
+          75% { transform: translateX(2px); }
+        }
+
+        .reaction-picker-attached {
+          background: #FFF;
+          border: 2px solid #5B50FF;
+          border-radius: 32px;
+          display: flex;
+          align-items: center;
+          padding: 0 14px;
+          z-index: 300;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+          animation: pickerFade 0.2s cubic-bezier(0.2, 0, 0, 1.2);
+          transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+          width: 460px;
+          height: 56px;
+          justify-content: center;
+          gap: 4px;
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          overflow: hidden;
+        }
+
+        .reaction-picker-danger {
+          background: #EF4444 !important;
+          border-color: #B91C1C !important;
+          cursor: pointer;
+        }
+
+        .dock-item {
+          width: 42px;
+          height: 42px;
+          transition: transform 0.2s cubic-bezier(0.1, 0, 0.2, 1.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 26px;
+          cursor: pointer;
+        }
+
+        .dock-item:hover { transform: scale(1.4) translateY(-4px); z-index: 10; }
+
+        @keyframes pickerFade {
+          from { opacity: 0; transform: translate(-50%, 15px) scale(0.95); }
+          to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+
+        .picker-divider {
+          width: 1.5px;
+          height: 24px;
+          background: #F1F3F5;
+          margin: 0 10px;
+          flex-shrink: 0;
+        }
       `}</style>
 
-      {/* Header Publication (Identité Immuable) */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-[100]">
-        <div className="flex items-center space-x-4">
-          <button onClick={onBack} className="p-2 -ml-2 active:scale-90 transition-transform">
-            <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
+      {/* Header Discussion */}
+      <div className="flex items-center justify-between px-6 py-6 border-b-2 border-gray-100 bg-white sticky top-0 z-[100] shrink-0">
+        <div className="flex items-center space-x-6">
+          <button onClick={onBack} className="p-3 bg-gray-50 rounded-full active:scale-90 transition-transform">
+            <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <div>
-            <h2 className="text-xl font-[1000] uppercase tracking-tighter leading-none">Publication Entière</h2>
-            <p className="text-[10px] font-black text-[#FF416C] uppercase tracking-[0.2em] mt-1">Source Originale • socialX CORE</p>
-          </div>
+          <h2 className="text-3xl font-[1000] uppercase tracking-tighter text-black">DISCUSSION</h2>
         </div>
-        <div className="flex items-center space-x-2">
-           <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-           <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Vérifié</span>
+        <div className="bg-black px-5 py-2.5 rounded-full flex items-center space-x-3">
+           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+           <span className="text-[11px] font-black uppercase text-white leading-none">Actif</span>
         </div>
       </div>
 
-      {/* Contenu Scrollable */}
-      <div className="flex-1 overflow-y-auto px-4 py-8 space-y-16 pb-44 scroll-smooth hide-scrollbar bg-[#F8F9FB]">
-        
-        {/* LA PUBLICATION : Le héros de la page */}
-        <div className="max-w-3xl mx-auto w-full animate-in zoom-in-95 duration-500">
-           <div className="bg-white rounded-[44px] shadow-2xl shadow-black/5 overflow-hidden border border-gray-100">
-              <PostItem 
-                post={post} 
-                onComment={scrollToComments}
-                onDeletePost={onDeletePost}
-                onArchivePost={onArchivePost}
-                onHideAuthor={onHideAuthor}
-                onProfileClick={onProfileClick}
-                onExploreHub={onExploreHub}
-                onPublishQuote={onPublishQuote}
-              />
+      <div className="flex-1 overflow-y-auto px-4 py-8 space-y-12 pb-60 hide-scrollbar">
+        {/* PUBLICATION PRINCIPALE */}
+        <div className="max-w-4xl mx-auto w-full relative">
+           <div 
+             id={`bubble-${post.id}`}
+             onMouseDown={() => startPress(post.id)}
+             onMouseUp={() => endPress(post.id)}
+             className={`bg-white rounded-[44px] border-[3px] border-gray-100 overflow-hidden relative transition-all ${activeReactionPickerId === post.id ? 'border-[#5B50FF]' : ''} ${pressingId === post.id ? 'scale-[0.99]' : ''} ${confirmDeleteId === post.id ? 'danger-target' : ''} ${explodingId === post.id ? 'bubble-exploding' : ''}`}
+           >
+              <PostItem post={post} />
            </div>
+
+           {activeReactionPickerId === post.id && !explodingId && (
+             <div 
+               onClick={() => handleConfirmDelete(post.id, false)}
+               className={`reaction-picker-attached -top-12 ${confirmDeleteId === post.id ? 'reaction-picker-danger' : ''}`}
+             >
+                {confirmDeleteId === post.id ? (
+                  <div className="w-full flex items-center justify-between px-6 animate-in fade-in zoom-in-95 duration-200">
+                    <span className="text-white font-black uppercase tracking-tight text-[13px] relative z-10">Supprimer ce message ?</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); cancelDelete(e); }}
+                      className="bg-white text-[#5B50FF] px-6 py-2 rounded-2xl text-[11px] font-[1000] uppercase tracking-widest transition-all active:scale-90 shadow-[0_8px_20px_rgba(0,0,0,0.2)] border border-white/50"
+                    >NON</button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1 flex-1 justify-center">
+                      {REACTIONS_LIST.map(emoji => (
+                        <button key={emoji} onClick={(e) => { e.stopPropagation(); toggleReaction(post.id, emoji); }} className="dock-item">{emoji}</button>
+                      ))}
+                    </div>
+                    <div className="picker-divider" />
+                    <button onClick={(e) => { e.stopPropagation(); handleTrashClick(e, post.id); }} className="dock-item text-gray-400 hover:text-red-500 transition-colors">
+                      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                    </button>
+                  </>
+                )}
+             </div>
+           )}
         </div>
 
-        {/* ESPACE DISCUSSION : L'utilisateur choisit d'y aller */}
-        <div ref={commentsSectionRef} className="max-w-3xl mx-auto w-full flex flex-col space-y-12">
-          <div className="px-6 flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-[0.4em] text-gray-400">Espace Discussion</h3>
-            <span className="text-[10px] font-black text-gray-300 uppercase">{comments.length} Contributions</span>
-          </div>
-
-          <div className="space-y-12">
-            {comments.map((comment) => {
-              const isMe = comment.isMe;
-              const parent = comment.replyToId ? comments.find(c => c.id === comment.replyToId) : null;
-
-              return (
-                <div key={comment.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${comment.replyToId ? 'pl-8' : ''}`}>
-                  
-                  {/* Auteur et Time */}
-                  {!isMe && (
-                    <div className="flex items-center space-x-3 mb-2 ml-1">
-                      <img src={comment.avatar} className="w-8 h-8 rounded-full object-cover border border-gray-100 shadow-sm" />
-                      <span className="text-[13px] font-black uppercase tracking-tight">{comment.user}</span>
-                      <span className="text-[11px] font-bold text-gray-300">{comment.time}</span>
-                    </div>
-                  )}
-
-                  {/* Bulle de texte */}
-                  <div className={`relative px-6 py-4 max-w-[90%] shadow-sm ${isMe ? 'bubble-me' : 'bg-white border border-gray-100 bubble-other'}`}>
-                    {parent && (
-                      <div className={`mb-3 pl-3 border-l-2 py-0.5 text-[12px] font-bold opacity-70 italic ${isMe ? 'border-white/40' : 'border-[#5B50FF]'}`}>
-                        @{parent.user} : {parent.text.substring(0, 30)}...
-                      </div>
-                    )}
-                    <p className="text-[17px] font-bold leading-tight tracking-tight">{comment.text}</p>
+        {/* Liste des commentaires */}
+        <div className="mt-14 space-y-16">
+          {comments.map((comment) => (
+            <div key={comment.id} className={`flex flex-col ${comment.isMe ? 'items-end' : 'items-start'}`}>
+              {!comment.isMe && (
+                <div className="flex items-center space-x-4 mb-4 ml-1">
+                  <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-gray-200">
+                    <img src={comment.avatar} className="w-full h-full object-cover" />
                   </div>
-
-                  {/* Actions (Sous la bulle) */}
-                  <div className={`flex items-center mt-3 space-x-6 px-2 ${isMe ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                    {/* Réactions existantes */}
-                    {comment.reactions.length > 0 && (
-                      <div className="flex items-center -space-x-1 mr-2">
-                        {comment.reactions.map((r, i) => (
-                          <div key={i} className="w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 text-sm">
-                            {r}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <button 
-                      onClick={() => toggleLike(comment.id)}
-                      className={`flex items-center space-x-1.5 transition-colors ${comment.isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
-                    >
-                      <svg className="w-5 h-5" fill={comment.isLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
-                      <span className="text-xs font-black">{comment.likes || ''}</span>
-                    </button>
-
-                    <button 
-                      onClick={() => handleReply(comment)}
-                      className="text-gray-400 hover:text-[#5B50FF] flex items-center space-x-1.5 transition-colors"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
-                      <span className="text-xs font-black uppercase tracking-widest">Répondre</span>
-                    </button>
-
-                    <div className="relative">
-                      <button 
-                        onClick={() => setActiveReactionId(activeReactionId === comment.id ? null : comment.id)}
-                        className="text-gray-400 hover:text-gray-900 transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" /></svg>
-                      </button>
-                      {activeReactionId === comment.id && (
-                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 flex items-center bg-white shadow-2xl border border-gray-100 rounded-full px-4 py-2 space-x-3 animate-in fade-in zoom-in-90 duration-200 z-[110]">
-                          {REACTIONS_LIST.map(emoji => (
-                            <button key={emoji} onClick={() => addReaction(comment.id, emoji)} className="text-2xl hover:scale-125 transition-transform active:scale-90">{emoji}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <button 
-                      onClick={() => setReportingId(comment.id)}
-                      className="text-gray-300 hover:text-red-500 transition-colors"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" /></svg>
-                    </button>
+                  <div className="flex flex-col">
+                    <span className="text-[14px] font-[1000] uppercase text-black">{comment.user}</span>
+                    <span className="text-[10px] font-black text-gray-400 uppercase leading-none">{comment.time}</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
+
+              <div className="relative w-full flex flex-col" style={{ alignItems: comment.isMe ? 'flex-end' : 'flex-start' }}>
+                {activeReactionPickerId === comment.id && !explodingId && (
+                  <div 
+                    onClick={() => handleConfirmDelete(comment.id, !!comment.isMe)}
+                    className={`reaction-picker-attached bottom-full mb-4 ${comment.isMe ? 'right-0' : 'left-0'} ${confirmDeleteId === comment.id ? 'reaction-picker-danger' : ''}`}
+                  >
+                     {confirmDeleteId === comment.id ? (
+                       <div className="w-full flex items-center justify-between px-6 animate-in fade-in zoom-in-95 duration-200">
+                         <span className="text-white font-black uppercase tracking-tight text-[12px] relative z-10">Supprimer ce message ?</span>
+                         <button 
+                           onClick={(e) => { e.stopPropagation(); cancelDelete(e); }}
+                           className="bg-white text-[#5B50FF] px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_8px_20px_rgba(0,0,0,0.2)]"
+                         >NON</button>
+                       </div>
+                     ) : (
+                       <>
+                        <div className="flex items-center gap-1 flex-1 justify-center">
+                          {REACTIONS_LIST.map(emoji => (
+                            <button key={emoji} onClick={(e) => { e.stopPropagation(); toggleReaction(comment.id, emoji); }} className="dock-item">{emoji}</button>
+                          ))}
+                        </div>
+                        <div className="picker-divider" />
+                        <button onClick={(e) => { e.stopPropagation(); handleTrashClick(e, comment.id); }} className="dock-item text-gray-400 hover:text-red-500 transition-colors">
+                          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
+                       </>
+                     )}
+                  </div>
+                )}
+                <div 
+                  id={`bubble-${comment.id}`}
+                  onMouseDown={(e) => { e.stopPropagation(); startPress(comment.id, comment); }}
+                  onMouseUp={(e) => { e.stopPropagation(); endPress(comment.id); }}
+                  className={`relative px-8 py-6 max-w-[90%] cursor-pointer ${comment.isMe ? 'bubble-me' : 'bubble-other'} ${pressingId === comment.id ? 'bubble-pressing' : ''} ${confirmDeleteId === comment.id ? 'danger-target' : ''} ${explodingId === comment.id ? 'bubble-exploding' : ''}`}
+                >
+                  <p className="text-[16px] font-medium leading-[1.4] tracking-tight">{comment.text}</p>
+                  <div className={`absolute -bottom-4 ${comment.isMe ? 'left-6' : 'right-6'} flex -space-x-1.5`}>
+                     {comment.myReaction && <div className="bg-white border-2 border-[#5B50FF] rounded-full px-2.5 py-1 text-[14px] font-black z-10">{comment.myReaction}</div>}
+                  </div>
+                </div>
+                <span className={`text-[9px] font-black text-gray-400 uppercase mt-2 tracking-widest ${comment.isMe ? 'text-right' : 'text-left'}`}>{comment.time}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Barre de saisie (Toujours là, mais discrète) */}
-      <div className="bg-white border-t border-gray-100 p-4 pb-10 shadow-2xl relative z-[200]">
-        <div className="max-w-4xl mx-auto space-y-3">
+      <div className="bg-white border-t-2 border-gray-200 p-6 pb-12 relative z-[200]">
+        <div className="max-w-4xl mx-auto space-y-5">
           {replyingTo && (
-            <div className="flex items-center justify-between bg-gray-50 px-5 py-3 rounded-2xl animate-in slide-in-from-bottom-2">
-               <div className="flex flex-col">
-                 <span className="text-[10px] font-black text-[#5B50FF] uppercase tracking-widest leading-none">Réponse à</span>
-                 <span className="text-sm font-black text-black">@{replyingTo.user}</span>
-               </div>
-               <button onClick={() => setReplyingTo(null)} className="p-2 text-gray-400"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></button>
+            <div className="flex items-center justify-between bg-gray-50 px-6 py-3 rounded-2xl border border-gray-100">
+               <span className="text-[11px] font-black uppercase">Réponse à @{replyingTo.user}</span>
+               <button onClick={() => setReplyingTo(null)} className="p-1 text-gray-400"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
           )}
-          
-          <div className="flex items-end space-x-3">
+          <div className="flex items-end space-x-4">
             <div className="flex-1 relative">
               <textarea 
                 ref={inputRef}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Votre avis sur cette publication..."
-                className="w-full bg-gray-100 border-none rounded-[24px] py-4 px-6 pr-14 text-[17px] font-bold placeholder:text-gray-400 focus:ring-4 focus:ring-[#5B50FF]/5 transition-all resize-none max-h-32 shadow-inner"
+                placeholder="Votre message..."
+                className="w-full bg-[#F8F9FB] border-none rounded-[32px] py-6 px-9 pr-24 text-xl font-bold focus:bg-white focus:ring-2 focus:ring-[#5B50FF]/20 transition-all resize-none max-h-40"
                 rows={1}
               />
-              <button 
-                onClick={handleSendMessage}
-                disabled={!inputText.trim()}
-                className={`absolute right-2 bottom-2 w-11 h-11 rounded-full flex items-center justify-center transition-all ${inputText.trim() ? 'bg-[#5B50FF] text-white shadow-lg' : 'bg-gray-200 text-gray-400'}`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              <button onClick={handleSendMessage} disabled={!inputText.trim()} className={`absolute right-4 bottom-3 w-16 h-16 rounded-full flex items-center justify-center transition-all ${inputText.trim() ? 'bg-[#5B50FF] text-white' : 'bg-gray-200 text-gray-400'}`}>
+                <svg className="w-9 h-9 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
               </button>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Modal Signalement Simple */}
-      {reportingId && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center px-6 bg-black/60 backdrop-blur-sm" onClick={() => setReportingId(null)}>
-           <div className="w-full max-w-sm bg-white rounded-[32px] p-8 shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-              <h3 className="text-xl font-[1000] uppercase tracking-tighter mb-6 text-center">Signaler</h3>
-              <div className="space-y-2">
-                {['Spam', 'Haine', 'Désinformation', 'Autre'].map(reason => (
-                  <button key={reason} onClick={() => setReportingId(null)} className="w-full p-4 bg-gray-50 hover:bg-red-50 hover:text-red-600 rounded-xl text-left font-black text-xs uppercase tracking-widest transition-all">
-                    {reason}
-                  </button>
-                ))}
-                <button onClick={() => setReportingId(null)} className="w-full mt-4 p-4 text-gray-400 font-black text-xs uppercase tracking-widest">Annuler</button>
-              </div>
-           </div>
-        </div>
-      )}
     </div>
   );
 };

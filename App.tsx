@@ -20,7 +20,7 @@ import { SkeletonPost } from './components/Skeleton';
 import { POSTS as INITIAL_POSTS, STORIES, COMPETITIONS } from './constants/mockData';
 import { Post, User } from './types';
 
-// Mock de l'utilisateur actuel
+// Utilisateur ME complet pour satisfaire l'interface User et éviter les erreurs
 const ME: User = {
   id: 'me',
   name: 'Alex Core',
@@ -28,7 +28,7 @@ const ME: User = {
   avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200&auto=format',
   isVerified: true,
   activityScore: 98.5,
-  bio: "Explorateur du réseau socialX. Passionné par l'information souveraine et le web moderne.",
+  bio: "Explorateur socialX. Passionné par l'information souveraine.",
   followersCount: 1240,
   followingCount: 850,
   postsCount: 156,
@@ -37,11 +37,11 @@ const ME: User = {
   commentsReceived: 890,
   commentsMade: 1205,
   reportsCount: 0,
+  reputationScore: 9.8
 };
 
 const App: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
-  const [hiddenAuthorIds, setHiddenAuthorIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('SOCIAL');
   const [activeView, setActiveView] = useState<'home' | 'explore' | 'notifications' | 'messages' | 'profile'>('home');
   const [selectedCompetitionId, setSelectedCompetitionId] = useState<string | null>(null);
@@ -52,170 +52,35 @@ const App: React.FC = () => {
   const [showCompose, setShowCompose] = useState(false);
 
   useEffect(() => {
-    // Scroll au changement de vue majeure uniquement si ce n'est pas un retour de thread
-    if (!activeThreadPost) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    
     setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 800);
+    const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
-  }, [activeView, activeTab, activeProfileUser, activeThreadPost]);
+  }, [activeView, activeTab]);
 
   const selectedCompetition = useMemo(() => 
     COMPETITIONS.find(c => c.id === selectedCompetitionId), 
   [selectedCompetitionId]);
 
-  // Filtrage global : exclut les archivés et les auteurs masqués
   const filteredPosts = useMemo(() => {
-    const base = posts.filter(p => !p.isArchived && !hiddenAuthorIds.has(p.author.id));
-    if (activeTab === 'VOIX') return base.filter(p => !!p.poll);
-    if (activeTab === 'SOCIAL') return base.filter(p => !p.poll);
-    if (activeTab === 'CLUBS') return [];
-    return base;
-  }, [activeTab, posts, hiddenAuthorIds]);
+    if (activeTab === 'VOIX') return posts.filter(p => !!p.poll);
+    if (activeTab === 'SOCIAL') return posts.filter(p => !p.poll);
+    return posts;
+  }, [activeTab, posts]);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleCreatePost = (content: string) => {
-    const newPost: Post = {
-      id: `post-${Date.now()}`,
-      author: ME,
-      timestamp: 'À l\'instant',
-      content: content,
-      stats: { comments: '0', reposts: '0', likes: '0' }
-    };
-    
-    setPosts([newPost, ...posts]);
-    setShowCompose(false);
-    
-    // Retour au flux principal et remontée automatique
-    setActiveView('home');
-    setActiveTab('SOCIAL');
-    setTimeout(scrollToTop, 100);
-  };
-
-  const handlePublishQuote = (comment: string, postToShare: Post) => {
-    const isCleanRepost = comment.trim() === '';
-    const sourcePost = postToShare.isRepost && postToShare.originalPostId 
-      ? posts.find(p => p.id === postToShare.originalPostId) || postToShare 
-      : postToShare;
-
-    const originalAuthor = postToShare.isRepost && postToShare.originalAuthor 
-      ? postToShare.originalAuthor 
-      : postToShare.author;
-
-    const originalPostId = postToShare.isRepost && postToShare.originalPostId 
-      ? postToShare.originalPostId 
-      : postToShare.id;
-    
-    const newPost: Post = {
-      id: `post-${Date.now()}`,
-      author: ME,
-      timestamp: 'À l\'instant',
-      content: comment,
-      quotedPost: !isCleanRepost ? sourcePost : undefined,
-      isRepost: isCleanRepost,
-      originalAuthor: originalAuthor,
-      originalPostId: originalPostId,
-      ...(isCleanRepost ? {
-        content: sourcePost.content,
-        image: sourcePost.image,
-        images: sourcePost.images,
-        video: sourcePost.video,
-        poll: sourcePost.poll,
-        link: sourcePost.link,
-        stats: sourcePost.stats, 
-      } : {
-        stats: { comments: '0', reposts: '0', likes: '0' }
-      })
-    };
-    
-    setPosts([newPost, ...posts]);
-    
-    // Retour au flux principal et remontée automatique
-    setActiveView('home');
-    setActiveTab('SOCIAL');
-    setTimeout(scrollToTop, 100);
-  };
-
-  const handleDeletePost = (postId: string) => {
-    setPosts(prev => prev.filter(p => p.id !== postId));
-    if (activeThreadPost?.id === postId) {
-      setActiveThreadPost(null);
-    }
-  };
-
-  const handleArchivePost = (postId: string) => {
-    setPosts(prev => prev.map(p => 
-      p.id === postId ? { ...p, isArchived: true } : p
-    ));
-    if (activeThreadPost?.id === postId) {
-      setActiveThreadPost(null);
-    }
-  };
-
-  const handleHideAuthor = (authorId: string) => {
-    setHiddenAuthorIds(prev => {
-      const next = new Set(prev);
-      next.add(authorId);
-      return next;
-    });
-    if (activeThreadPost?.author.id === authorId) {
-      setActiveThreadPost(null);
-    }
-  };
-
-  const handleExploreHub = (id: string) => setSelectedCompetitionId(id);
-  
-  const handleOpenThread = (postOrId: Post | string) => {
-    if (typeof postOrId === 'string') {
-      const p = posts.find(x => x.id === postOrId);
-      if (p) setActiveThreadPost(p);
-    } else {
-      setActiveThreadPost(postOrId);
-    }
-  };
-
-  const handleCloseThread = () => setActiveThreadPost(null);
-  
+  const handleOpenThread = (post: Post) => setActiveThreadPost(post);
   const handleOpenProfile = (user: User) => {
     setActiveProfileUser(user);
     setActiveView('profile');
   };
 
-  const handleOpenMyProfile = () => {
-    setActiveProfileUser(ME);
-    setActiveView('profile');
-  };
-
   if (activeThreadPost) {
     return (
-      <div className="flex flex-col min-h-screen bg-white w-full animate-in slide-in-from-right duration-300">
+      <div className="flex flex-col min-h-screen bg-white w-full animate-in fade-in duration-300">
         <ThreadView 
           post={activeThreadPost} 
-          onBack={handleCloseThread}
-          onDeletePost={handleDeletePost}
-          onArchivePost={handleArchivePost}
-          onHideAuthor={handleHideAuthor}
+          onBack={() => setActiveThreadPost(null)}
           onProfileClick={handleOpenProfile}
-          onExploreHub={handleExploreHub}
-          onPublishQuote={handlePublishQuote}
         />
-      </div>
-    );
-  }
-
-  if (selectedCompetition) {
-    return (
-      <div className="flex flex-col min-h-screen bg-white w-full animate-in fade-in duration-500">
-        <CompetitionHub 
-          competition={selectedCompetition} 
-          onBack={() => setSelectedCompetitionId(null)} 
-        />
-        <BottomNav activeView={activeView} onViewChange={(v) => { setSelectedCompetitionId(null); setActiveView(v); }} />
       </div>
     );
   }
@@ -229,46 +94,18 @@ const App: React.FC = () => {
           isMe={activeProfileUser.id === 'me'}
           onBack={() => { setActiveView('home'); setActiveProfileUser(null); }} 
           onPostComment={handleOpenThread}
-          onDeletePost={handleDeletePost}
-          onArchivePost={handleArchivePost}
-          onHideAuthor={handleHideAuthor}
         />
       );
     }
-
     if (activeView === 'home') {
       return (
         <>
           {activeTab === 'SOCIAL' && <StoriesBar stories={STORIES} isLoading={isLoading} />}
-          
           <div className="bg-white border-b border-gray-100">
-            <BreakingNews 
-              title="socialX DIRECT" 
-              description="Découvrez comment la communauté façonne l'information en temps réel sur le flux Social." 
-            />
+            <BreakingNews title="socialX DIRECT" description="La communauté façonne l'information en temps réel sur le flux Social." />
           </div>
-
-          {activeTab === 'CLUBS' ? (
-            <ClubsView />
-          ) : (
-            <div className="w-full">
-              {isLoading ? (
-                <div className="p-4 space-y-4">
-                  {Array.from({ length: 3 }).map((_, i) => <SkeletonPost key={i} />)}
-                </div>
-              ) : (
-                <Feed 
-                  posts={filteredPosts} 
-                  onExploreHub={handleExploreHub} 
-                  onComment={handleOpenThread}
-                  onProfileClick={handleOpenProfile}
-                  onPublishQuote={handlePublishQuote}
-                  onDeletePost={handleDeletePost}
-                  onArchivePost={handleArchivePost}
-                  onHideAuthor={handleHideAuthor}
-                />
-              )}
-            </div>
+          {activeTab === 'CLUBS' ? <ClubsView /> : (
+            <Feed posts={filteredPosts} onComment={handleOpenThread} onProfileClick={handleOpenProfile} onExploreHub={setSelectedCompetitionId} />
           )}
         </>
       );
@@ -280,32 +117,19 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F8F9FB] w-full relative overflow-x-hidden animate-in fade-in duration-700">
+    <div className="flex flex-col min-h-screen bg-[#F8F9FB] w-full relative overflow-x-hidden">
       {activeView !== 'profile' && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-white/90 backdrop-blur-3xl border-b border-gray-100">
-          <Header 
-            user={ME}
-            onOpenPremium={() => setShowPremium(true)} 
-            onProfileClick={handleOpenMyProfile}
-          />
-          {activeView === 'home' && (
-            <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
-          )}
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-xl border-b border-gray-100">
+          <Header user={ME} onOpenPremium={() => setShowPremium(true)} onProfileClick={() => handleOpenProfile(ME)} />
+          {activeView === 'home' && <Tabs activeTab={activeTab} onTabChange={setActiveTab} />}
         </div>
       )}
-      
       <main className={`flex-1 pb-44 w-full ${activeView === 'profile' ? 'pt-0' : (activeView === 'home' ? 'pt-[110px]' : 'pt-[60px]')}`}>
-        <div className="max-w-4xl mx-auto w-full min-h-screen border-x border-gray-100/50 bg-white shadow-sm">
-          {renderContent()}
-        </div>
+        <div className="max-w-4xl mx-auto w-full min-h-screen bg-white shadow-sm border-x border-gray-100">{renderContent()}</div>
       </main>
-
       {showPremium && <PremiumModal onClose={() => setShowPremium(false)} />}
-      {showCompose && <ComposeModal onClose={() => setShowCompose(false)} onPublish={handleCreatePost} />}
-      
-      {activeView === 'home' && (activeTab === 'SOCIAL' || activeTab === 'VOIX') && (
-        <ComposeButton onClick={() => setShowCompose(true)} />
-      )}
+      {showCompose && <ComposeModal onClose={() => setShowCompose(false)} />}
+      <ComposeButton onClick={() => setShowCompose(true)} />
       <BottomNav activeView={activeView === 'profile' ? 'home' : activeView} onViewChange={setActiveView} />
     </div>
   );

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Post, User } from '../types';
 import PostHeader from './post/PostHeader';
@@ -45,7 +44,7 @@ const PostItem: React.FC<PostItemProps> = ({
   const getDisplayHandle = (user: User) => {
     const handle = user.handle || '';
     const cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
-    return `@${cleanHandle.toUpperCase()}`;
+    return `@${cleanHandle}`;
   };
 
   return (
@@ -59,20 +58,20 @@ const PostItem: React.FC<PostItemProps> = ({
           }
         }}
       >
-        {/* Bandeau de repartage - Restauration du design XY Core et redirection source */}
+        {/* Bandeau de repartage - Design XY Core : "publié initialement par" normal/lowercase, handle en BOLD/CAPITAL */}
         {!isQuoted && post.isRepost && post.originalAuthor && (
           <div 
             onClick={(e) => {
               e.stopPropagation();
-              // On remonte à l'ID original pour afficher la publication d'origine entière
               const sourceId = post.originalPostId || post.id;
               onComment?.(sourceId); 
             }}
             className="px-8 py-2.5 bg-[#FF416C] border-b border-white/5 flex items-center justify-center cursor-pointer hover:brightness-110 active:opacity-95 transition-all group/banner"
           >
-             <span className="text-[10px] font-[1000] tracking-[0.2em] text-white uppercase text-center leading-none">
-               Publié initialement par {getDisplayHandle(post.originalAuthor)}
-             </span>
+             <div className="text-[11px] tracking-wider text-white/80 text-center leading-none">
+               <span className="font-normal lowercase">publié initialement par </span>
+               <span className="font-black uppercase">{getDisplayHandle(post.originalAuthor)}</span>
+             </div>
           </div>
         )}
 
