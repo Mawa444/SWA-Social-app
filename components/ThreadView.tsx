@@ -89,7 +89,6 @@ const ThreadView: React.FC<ThreadViewProps> = ({
     };
   }, [comments, postReaction]);
 
-  // Particle System Animation Loop
   const animateParticles = (time: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -98,11 +97,11 @@ const ThreadView: React.FC<ThreadViewProps> = ({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    particles.current.forEach((p, i) => {
+    particles.current.forEach((p) => {
       p.x += p.vx;
       p.y += p.vy;
-      p.vy -= 0.05; // Vent ascendant
-      p.vx += 0.02; // Vent latéral
+      p.vy -= 0.05; 
+      p.vx += 0.02; 
       p.rotation += p.vr;
       p.life -= 0.01;
       p.alpha = Math.max(0, p.life);
@@ -130,32 +129,32 @@ const ThreadView: React.FC<ThreadViewProps> = ({
     };
     handleResize();
     window.addEventListener('resize', handleResize);
+    document.body.style.overflow = 'hidden'; 
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
       window.removeEventListener('resize', handleResize);
+      document.body.style.overflow = '';
     };
   }, []);
 
-  const triggerExplosion = (targetId: string, color: string) => {
+  const triggerExplosion = (targetId: string, primaryColor: string, secondaryColor: string) => {
     const element = document.getElementById(`bubble-${targetId}`);
     if (!element) return;
 
     const rect = element.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
 
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 180; i++) {
       particles.current.push({
         x: rect.left + Math.random() * rect.width,
         y: rect.top + Math.random() * rect.height,
-        vx: (Math.random() - 0.5) * 12,
-        vy: (Math.random() - 0.5) * 12,
+        vx: (Math.random() - 0.5) * 14,
+        vy: (Math.random() - 0.5) * 14,
         size: Math.random() * 8 + 2,
-        color: color,
+        color: Math.random() > 0.2 ? primaryColor : secondaryColor,
         alpha: 1,
-        life: Math.random() * 0.8 + 0.4,
+        life: Math.random() * 0.9 + 0.3,
         rotation: Math.random() * Math.PI * 2,
-        vr: (Math.random() - 0.5) * 0.2
+        vr: (Math.random() - 0.5) * 0.25
       });
     }
 
@@ -172,6 +171,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({
       ));
     }
     closePicker();
+    if (window.navigator?.vibrate) window.navigator.vibrate(20);
   };
 
   const closePicker = () => {
@@ -179,13 +179,17 @@ const ThreadView: React.FC<ThreadViewProps> = ({
     setConfirmDeleteId(null);
   };
 
-  const handleConfirmDelete = (targetId: string, isMe: boolean = false) => {
+  const handleConfirmDelete = (targetId: string, isMe: boolean = false, isMainPost: boolean = false) => {
     if (confirmDeleteId !== targetId) return;
 
-    const color = isMe ? '#5B50FF' : '#FFFFFF';
-    triggerExplosion(targetId, color);
+    let pColor = '#FFFFFF';
+    let sColor = '#EEEEEE';
+    
+    if (isMe) { pColor = '#5B50FF'; sColor = '#FFFFFF'; }
+    else if (isMainPost) { pColor = '#FFFFFF'; sColor = '#5B50FF'; }
 
-    // Attendre la fin de la déflagration visuelle pour retirer du state
+    triggerExplosion(targetId, pColor, sColor);
+
     setTimeout(() => {
       if (targetId === post.id) {
         if (onDeletePost) {
@@ -201,16 +205,16 @@ const ThreadView: React.FC<ThreadViewProps> = ({
     }, 400);
   };
 
-  // Add missing trash icon handler to show delete confirmation
   const handleTrashClick = (e: React.MouseEvent, targetId: string) => {
     e.stopPropagation();
     setConfirmDeleteId(targetId);
+    if (window.navigator?.vibrate) window.navigator.vibrate(40);
   };
 
-  // Add missing cancel delete handler to reset confirmation state
   const cancelDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     setConfirmDeleteId(null);
+    if (window.navigator?.vibrate) window.navigator.vibrate(15);
   };
 
   const startPress = (id: string, comment?: Comment) => {
@@ -219,8 +223,12 @@ const ThreadView: React.FC<ThreadViewProps> = ({
     isLongPressActive.current = false;
     longPressTimer.current = window.setTimeout(() => {
       isLongPressActive.current = true;
-      if (comment) setReplyingTo(comment);
+      if (comment) {
+        setReplyingTo(comment);
+        inputRef.current?.focus();
+      }
       setPressingId(null);
+      if (window.navigator?.vibrate) window.navigator.vibrate(50);
     }, 450); 
   };
 
@@ -256,10 +264,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({
 
   return (
     <div className="flex flex-col h-screen bg-[#F1F3F5] w-full overflow-hidden relative">
-      <canvas 
-        ref={canvasRef} 
-        className="fixed inset-0 pointer-events-none z-[1000]"
-      />
+      <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[1000]" />
 
       <style>{`
         .bubble-other { 
@@ -275,17 +280,17 @@ const ThreadView: React.FC<ThreadViewProps> = ({
           border: 2px solid #5B50FF;
           transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
         }
-        .bubble-pressing { transform: scale(0.98); }
+        .bubble-pressing { transform: scale(0.96); }
         .bubble-exploding { 
           opacity: 0 !important; 
-          transform: scale(1.1) !important;
+          transform: scale(1.15) !important;
           pointer-events: none;
         }
         
         .danger-target {
           border-color: #EF4444 !important;
-          box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2), 0 10px 30px rgba(239, 68, 68, 0.1);
-          animation: danger-pulse 1.5s infinite ease-in-out, danger-shake 0.4s ease-in-out;
+          box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2), 0 10px 40px rgba(239, 68, 68, 0.15);
+          animation: danger-pulse 1.2s infinite ease-in-out, danger-shake 0.4s ease-in-out;
           z-index: 10;
         }
 
@@ -297,8 +302,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({
 
         @keyframes danger-shake {
           0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-2px); }
-          75% { transform: translateX(2px); }
+          25% { transform: translateX(-3px); }
+          75% { transform: translateX(3px); }
         }
 
         .reaction-picker-attached {
@@ -309,8 +314,8 @@ const ThreadView: React.FC<ThreadViewProps> = ({
           align-items: center;
           padding: 0 14px;
           z-index: 300;
-          box-shadow: 0 20px 50px rgba(0,0,0,0.12);
-          animation: pickerFade 0.2s cubic-bezier(0.2, 0, 0, 1.2);
+          box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+          animation: pickerFade 0.2s cubic-bezier(0.2, 0, 0, 1.3);
           transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
           width: 460px;
           height: 56px;
@@ -325,7 +330,6 @@ const ThreadView: React.FC<ThreadViewProps> = ({
         .reaction-picker-danger {
           background: #EF4444 !important;
           border-color: #B91C1C !important;
-          cursor: pointer;
         }
 
         .dock-item {
@@ -339,23 +343,23 @@ const ThreadView: React.FC<ThreadViewProps> = ({
           cursor: pointer;
         }
 
-        .dock-item:hover { transform: scale(1.4) translateY(-4px); z-index: 10; }
+        .dock-item:hover { transform: scale(1.4) translateY(-6px); z-index: 10; }
 
         @keyframes pickerFade {
-          from { opacity: 0; transform: translate(-50%, 15px) scale(0.95); }
+          from { opacity: 0; transform: translate(-50%, 20px) scale(0.9); }
           to { opacity: 1; transform: translate(-50%, 0) scale(1); }
         }
 
         .picker-divider {
-          width: 1.5px;
+          width: 2px;
           height: 24px;
           background: #F1F3F5;
-          margin: 0 10px;
+          margin: 0 12px;
           flex-shrink: 0;
         }
       `}</style>
 
-      {/* Header Discussion */}
+      {/* Header */}
       <div className="flex items-center justify-between px-6 py-6 border-b-2 border-gray-100 bg-white sticky top-0 z-[100] shrink-0">
         <div className="flex items-center space-x-6">
           <button onClick={onBack} className="p-3 bg-gray-50 rounded-full active:scale-90 transition-transform">
@@ -364,13 +368,13 @@ const ThreadView: React.FC<ThreadViewProps> = ({
           <h2 className="text-3xl font-[1000] uppercase tracking-tighter text-black">DISCUSSION</h2>
         </div>
         <div className="bg-black px-5 py-2.5 rounded-full flex items-center space-x-3">
-           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-           <span className="text-[11px] font-black uppercase text-white leading-none">Actif</span>
+           <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+           <span className="text-[11px] font-black uppercase text-white leading-none tracking-widest">Actif</span>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-8 space-y-12 pb-60 hide-scrollbar">
-        {/* PUBLICATION PRINCIPALE */}
+        {/* Main Post */}
         <div className="max-w-4xl mx-auto w-full relative">
            <div 
              id={`bubble-${post.id}`}
@@ -383,16 +387,13 @@ const ThreadView: React.FC<ThreadViewProps> = ({
 
            {activeReactionPickerId === post.id && !explodingId && (
              <div 
-               onClick={() => handleConfirmDelete(post.id, false)}
+               onClick={() => handleConfirmDelete(post.id, false, true)}
                className={`reaction-picker-attached -top-12 ${confirmDeleteId === post.id ? 'reaction-picker-danger' : ''}`}
              >
                 {confirmDeleteId === post.id ? (
                   <div className="w-full flex items-center justify-between px-6 animate-in fade-in zoom-in-95 duration-200">
-                    <span className="text-white font-black uppercase tracking-tight text-[13px] relative z-10">Supprimer ce message ?</span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); cancelDelete(e); }}
-                      className="bg-white text-[#5B50FF] px-6 py-2 rounded-2xl text-[11px] font-[1000] uppercase tracking-widest transition-all active:scale-90 shadow-[0_8px_20px_rgba(0,0,0,0.2)] border border-white/50"
-                    >NON</button>
+                    <span className="text-white font-black uppercase tracking-tight text-[13px] relative z-10">Supprimer la publication ?</span>
+                    <button onClick={cancelDelete} className="bg-white text-[#5B50FF] px-6 py-2 rounded-2xl text-[11px] font-[1000] uppercase tracking-widest transition-all active:scale-90">NON</button>
                   </div>
                 ) : (
                   <>
@@ -402,7 +403,7 @@ const ThreadView: React.FC<ThreadViewProps> = ({
                       ))}
                     </div>
                     <div className="picker-divider" />
-                    <button onClick={(e) => { e.stopPropagation(); handleTrashClick(e, post.id); }} className="dock-item text-gray-400 hover:text-red-500 transition-colors">
+                    <button onClick={(e) => handleTrashClick(e, post.id)} className="dock-item text-gray-400 hover:text-red-500 transition-colors">
                       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                     </button>
                   </>
@@ -411,75 +412,100 @@ const ThreadView: React.FC<ThreadViewProps> = ({
            )}
         </div>
 
-        {/* Liste des commentaires */}
-        <div className="mt-14 space-y-16">
-          {comments.map((comment) => (
-            <div key={comment.id} className={`flex flex-col ${comment.isMe ? 'items-end' : 'items-start'}`}>
-              {!comment.isMe && (
-                <div className="flex items-center space-x-4 mb-4 ml-1">
-                  <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-gray-200">
-                    <img src={comment.avatar} className="w-full h-full object-cover" />
+        {/* Global Stats */}
+        <div className="max-w-4xl mx-auto w-full">
+          <div className="bg-white rounded-[32px] border-2 border-gray-100 p-8 flex items-center justify-between">
+            <div className="flex items-center space-x-12">
+               <div className="flex flex-col">
+                  <span className="text-[11px] font-black uppercase text-gray-400 mb-2 tracking-widest">Messages</span>
+                  <span className="text-4xl font-[1000] text-green-600 leading-none">{stats.messageCount}</span>
+               </div>
+               <div className="flex flex-col">
+                  <span className="text-[11px] font-black uppercase text-gray-400 mb-2 tracking-widest">Votes</span>
+                  <span className="text-4xl font-[1000] text-[#5B50FF] leading-none">{stats.totalReactions}</span>
+               </div>
+            </div>
+            <div className="flex items-center space-x-2 bg-gray-50 px-4 py-3 rounded-2xl border-2 border-white overflow-x-auto hide-scrollbar">
+              {REACTIONS_LIST.map(emoji => {
+                const count = stats.reactions[emoji];
+                if (count === 0) return null;
+                return (
+                  <div key={emoji} className="flex items-center bg-white border border-gray-100 px-3 py-1.5 rounded-xl gap-2 shadow-sm">
+                    <span className="text-xl">{emoji}</span>
+                    <span className="text-sm font-black text-black">{count}</span>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[14px] font-[1000] uppercase text-black">{comment.user}</span>
-                    <span className="text-[10px] font-black text-gray-400 uppercase leading-none">{comment.time}</span>
-                  </div>
-                </div>
-              )}
+                );
+              })}
+            </div>
+          </div>
 
-              <div className="relative w-full flex flex-col" style={{ alignItems: comment.isMe ? 'flex-end' : 'flex-start' }}>
-                {activeReactionPickerId === comment.id && !explodingId && (
-                  <div 
-                    onClick={() => handleConfirmDelete(comment.id, !!comment.isMe)}
-                    className={`reaction-picker-attached bottom-full mb-4 ${comment.isMe ? 'right-0' : 'left-0'} ${confirmDeleteId === comment.id ? 'reaction-picker-danger' : ''}`}
-                  >
-                     {confirmDeleteId === comment.id ? (
-                       <div className="w-full flex items-center justify-between px-6 animate-in fade-in zoom-in-95 duration-200">
-                         <span className="text-white font-black uppercase tracking-tight text-[12px] relative z-10">Supprimer ce message ?</span>
-                         <button 
-                           onClick={(e) => { e.stopPropagation(); cancelDelete(e); }}
-                           className="bg-white text-[#5B50FF] px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-[0_8px_20px_rgba(0,0,0,0.2)]"
-                         >NON</button>
-                       </div>
-                     ) : (
-                       <>
-                        <div className="flex items-center gap-1 flex-1 justify-center">
-                          {REACTIONS_LIST.map(emoji => (
-                            <button key={emoji} onClick={(e) => { e.stopPropagation(); toggleReaction(comment.id, emoji); }} className="dock-item">{emoji}</button>
-                          ))}
-                        </div>
-                        <div className="picker-divider" />
-                        <button onClick={(e) => { e.stopPropagation(); handleTrashClick(e, comment.id); }} className="dock-item text-gray-400 hover:text-red-500 transition-colors">
-                          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                        </button>
-                       </>
-                     )}
+          <div className="mt-14 space-y-16">
+            {comments.map((comment) => (
+              <div key={comment.id} className={`flex flex-col ${comment.isMe ? 'items-end' : 'items-start'}`}>
+                {!comment.isMe && (
+                  <div className="flex items-center space-x-4 mb-4 ml-1">
+                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200">
+                      <img src={comment.avatar} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[14px] font-[1000] uppercase text-black">{comment.user}</span>
+                      <span className="text-[10px] font-black text-gray-400 uppercase leading-none tracking-widest">{comment.time}</span>
+                    </div>
                   </div>
                 )}
-                <div 
-                  id={`bubble-${comment.id}`}
-                  onMouseDown={(e) => { e.stopPropagation(); startPress(comment.id, comment); }}
-                  onMouseUp={(e) => { e.stopPropagation(); endPress(comment.id); }}
-                  className={`relative px-8 py-6 max-w-[90%] cursor-pointer ${comment.isMe ? 'bubble-me' : 'bubble-other'} ${pressingId === comment.id ? 'bubble-pressing' : ''} ${confirmDeleteId === comment.id ? 'danger-target' : ''} ${explodingId === comment.id ? 'bubble-exploding' : ''}`}
-                >
-                  <p className="text-[16px] font-medium leading-[1.4] tracking-tight">{comment.text}</p>
-                  <div className={`absolute -bottom-4 ${comment.isMe ? 'left-6' : 'right-6'} flex -space-x-1.5`}>
-                     {comment.myReaction && <div className="bg-white border-2 border-[#5B50FF] rounded-full px-2.5 py-1 text-[14px] font-black z-10">{comment.myReaction}</div>}
+
+                <div className="relative w-full flex flex-col" style={{ alignItems: comment.isMe ? 'flex-end' : 'flex-start' }}>
+                  {activeReactionPickerId === comment.id && !explodingId && (
+                    <div 
+                      onClick={() => handleConfirmDelete(comment.id, !!comment.isMe)}
+                      className={`reaction-picker-attached bottom-full mb-5 ${comment.isMe ? 'right-0' : 'left-0'} ${confirmDeleteId === comment.id ? 'reaction-picker-danger' : ''}`}
+                    >
+                       {confirmDeleteId === comment.id ? (
+                         <div className="w-full flex items-center justify-between px-6 animate-in fade-in zoom-in-95 duration-200">
+                           <span className="text-white font-black uppercase tracking-tight text-[12px] relative z-10">Supprimer le message ?</span>
+                           <button onClick={cancelDelete} className="bg-white text-[#5B50FF] px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">NON</button>
+                         </div>
+                       ) : (
+                         <>
+                          <div className="flex items-center gap-1 flex-1 justify-center">
+                            {REACTIONS_LIST.map(emoji => (
+                              <button key={emoji} onClick={(e) => { e.stopPropagation(); toggleReaction(comment.id, emoji); }} className="dock-item">{emoji}</button>
+                            ))}
+                          </div>
+                          <div className="picker-divider" />
+                          <button onClick={(e) => handleTrashClick(e, comment.id)} className="dock-item text-gray-400 hover:text-red-500 transition-colors">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                          </button>
+                         </>
+                       )}
+                    </div>
+                  )}
+                  <div 
+                    id={`bubble-${comment.id}`}
+                    onMouseDown={(e) => { e.stopPropagation(); startPress(comment.id, comment); }}
+                    onMouseUp={(e) => { e.stopPropagation(); endPress(comment.id); }}
+                    className={`relative px-8 py-6 max-w-[90%] cursor-pointer ${comment.isMe ? 'bubble-me' : 'bubble-other'} ${pressingId === comment.id ? 'bubble-pressing' : ''} ${confirmDeleteId === comment.id ? 'danger-target' : ''} ${explodingId === comment.id ? 'bubble-exploding' : ''}`}
+                  >
+                    <p className="text-[17px] font-medium leading-[1.5] tracking-tight">{comment.text}</p>
+                    <div className={`absolute -bottom-4 ${comment.isMe ? 'left-6' : 'right-6'} flex -space-x-1.5`}>
+                       {comment.myReaction && <div className="bg-white border-2 border-[#5B50FF] rounded-full px-2.5 py-1 text-[14px] font-black z-10 shadow-sm">{comment.myReaction}</div>}
+                    </div>
                   </div>
+                  <span className={`text-[9px] font-black text-gray-400 uppercase mt-2 tracking-widest ${comment.isMe ? 'text-right' : 'text-left'}`}>{comment.time}</span>
                 </div>
-                <span className={`text-[9px] font-black text-gray-400 uppercase mt-2 tracking-widest ${comment.isMe ? 'text-right' : 'text-left'}`}>{comment.time}</span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
+      {/* Input Bar */}
       <div className="bg-white border-t-2 border-gray-200 p-6 pb-12 relative z-[200]">
         <div className="max-w-4xl mx-auto space-y-5">
           {replyingTo && (
-            <div className="flex items-center justify-between bg-gray-50 px-6 py-3 rounded-2xl border border-gray-100">
-               <span className="text-[11px] font-black uppercase">Réponse à @{replyingTo.user}</span>
-               <button onClick={() => setReplyingTo(null)} className="p-1 text-gray-400"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <div className="flex items-center justify-between bg-gray-50 px-6 py-4 rounded-2xl border border-gray-200 animate-in slide-in-from-bottom-2">
+               <span className="text-[11px] font-black uppercase tracking-widest text-[#5B50FF]">Réponse à @{replyingTo.user}</span>
+               <button onClick={() => setReplyingTo(null)} className="p-1 text-gray-400 hover:text-black transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
           )}
           <div className="flex items-end space-x-4">
@@ -489,10 +515,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Votre message..."
-                className="w-full bg-[#F8F9FB] border-none rounded-[32px] py-6 px-9 pr-24 text-xl font-bold focus:bg-white focus:ring-2 focus:ring-[#5B50FF]/20 transition-all resize-none max-h-40"
+                className="w-full bg-[#F8F9FB] border-none rounded-[32px] py-6 px-9 pr-24 text-xl font-bold focus:bg-white focus:ring-4 focus:ring-[#5B50FF]/10 transition-all resize-none max-h-40"
                 rows={1}
               />
-              <button onClick={handleSendMessage} disabled={!inputText.trim()} className={`absolute right-4 bottom-3 w-16 h-16 rounded-full flex items-center justify-center transition-all ${inputText.trim() ? 'bg-[#5B50FF] text-white' : 'bg-gray-200 text-gray-400'}`}>
+              <button onClick={handleSendMessage} disabled={!inputText.trim()} className={`absolute right-4 bottom-3 w-16 h-16 rounded-full flex items-center justify-center transition-all ${inputText.trim() ? 'bg-[#5B50FF] text-white shadow-lg shadow-[#5B50FF]/20' : 'bg-gray-200 text-gray-400'}`}>
                 <svg className="w-9 h-9 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
               </button>
             </div>
