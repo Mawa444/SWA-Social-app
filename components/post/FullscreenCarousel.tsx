@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import XYImage from '../XYImage';
 
 interface FullscreenCarouselProps {
   images: string[];
@@ -24,12 +25,11 @@ const FullscreenCarousel: React.FC<FullscreenCarouselProps> = ({ images, initial
         behavior: 'auto'
       });
     }
-    // Empêcher le scroll du body quand la modal est ouverte
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = '';
     };
-  }, []);
+  }, [initialIndex]);
 
   const handleScroll = () => {
     if (scrollRef.current && !isDraggingX.current) {
@@ -48,7 +48,6 @@ const FullscreenCarousel: React.FC<FullscreenCarouselProps> = ({ images, initial
     const deltaX = Math.abs(e.pageX - startX.current);
     const deltaY = e.pageY - startY.current;
 
-    // Détecter la direction du geste (Vertical vs Horizontal)
     if (!isDraggingX.current && !isDraggingY.current) {
       if (deltaX > 10) isDraggingX.current = true;
       else if (deltaY > 10) isDraggingY.current = true;
@@ -75,7 +74,6 @@ const FullscreenCarousel: React.FC<FullscreenCarouselProps> = ({ images, initial
     if (scrollRef.current) scrollRef.current.style.scrollSnapType = 'x mandatory';
   };
 
-  // Touch handlers pour mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].pageX;
     startY.current = e.touches[0].pageY;
@@ -102,7 +100,7 @@ const FullscreenCarousel: React.FC<FullscreenCarouselProps> = ({ images, initial
 
   return (
     <div 
-      className="fixed inset-0 z-[300] bg-black flex flex-col transition-colors duration-200 select-none overflow-hidden"
+      className="fixed inset-0 z-[1000] bg-black flex flex-col transition-colors duration-200 select-none overflow-hidden"
       role="dialog"
       aria-modal="true"
       style={{ 
@@ -119,14 +117,13 @@ const FullscreenCarousel: React.FC<FullscreenCarouselProps> = ({ images, initial
         className="flex-1 flex flex-col transition-transform duration-100 ease-out"
         style={{ transform: `translateY(${dragY}px) scale(${scale})` }}
       >
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-[310]">
-          <div className="bg-white/10 px-4 py-1.5 rounded-full text-white font-black text-sm backdrop-blur-md border border-white/10 tabular-nums">
+        <div className="absolute top-0 left-0 right-0 p-8 flex justify-between items-center z-[1010]">
+          <div className="bg-white/10 px-5 py-2 rounded-full text-white font-[1000] text-sm backdrop-blur-xl border border-white/10 tabular-nums uppercase tracking-widest">
             {currentIndex + 1} / {images.length}
           </div>
           <button 
             onClick={onClose}
-            className="text-white bg-white/10 hover:bg-white/20 p-3 rounded-full backdrop-blur-md transition-all active:scale-90 border border-white/10"
+            className="text-white bg-white/10 hover:bg-white/20 p-4 rounded-full backdrop-blur-xl transition-all active:scale-90 border border-white/10 shadow-2xl"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -134,7 +131,6 @@ const FullscreenCarousel: React.FC<FullscreenCarouselProps> = ({ images, initial
           </button>
         </div>
 
-        {/* Scroll Surface */}
         <div 
           ref={scrollRef}
           onScroll={handleScroll}
@@ -144,22 +140,23 @@ const FullscreenCarousel: React.FC<FullscreenCarouselProps> = ({ images, initial
         >
           {images.map((img, idx) => (
             <div key={idx} className="w-screen h-screen flex-shrink-0 snap-center flex items-center justify-center p-4">
-              <img 
+              <XYImage 
                 src={img} 
                 alt={`Image ${idx + 1}`} 
-                className="max-w-full max-h-full object-contain shadow-2xl rounded-lg pointer-events-none"
+                objectFit="contain"
+                aspectRatio="h-full w-full"
+                className="max-w-full max-h-full shadow-2xl rounded-3xl"
               />
             </div>
           ))}
         </div>
 
-        {/* Dots */}
         {images.length > 1 && (
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center space-x-2.5 px-5 py-3 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 z-[310]">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center space-x-3 px-6 py-4 rounded-full bg-white/5 backdrop-blur-2xl border border-white/10 z-[1010]">
             {images.map((_, idx) => (
               <div 
                 key={idx} 
-                className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === idx ? 'w-8 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'w-1.5 bg-white/20'}`}
+                className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === idx ? 'w-10 bg-white shadow-[0_0_15px_rgba(255,255,255,0.6)]' : 'w-1.5 bg-white/20'}`}
               />
             ))}
           </div>

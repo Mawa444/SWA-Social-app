@@ -1,11 +1,47 @@
 
+export interface ReputationEvent {
+  id: string;
+  timestamp: string;
+  delta: number;
+  reason: string;
+  type: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+}
+
 export interface User {
   id: string;
   name: string;
   handle: string;
   avatar: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  bannerStyle?: string;
+  bannerColor?: string;
   isVerified?: boolean;
-  activityScore?: number;
+  areMetricsPublic?: boolean;
+  activityScore: number;
+  reputationScore?: number;
+  birthDate?: string;
+  birthPlace?: string;
+  followersCount: number;
+  followingCount: number;
+  postsCount: number;
+  repostsCount: number;
+  likesReceived: number;
+  commentsReceived: number;
+  commentsMade: number;
+  reportsCount: number;
+  reputationMetrics?: {
+    sentimentIndex: number;
+    trustFactor: number;
+    engagementQuality: number;
+    ledger: ReputationEvent[];
+  };
+  hasPendingMessageFromMe?: boolean; 
+  profileStyle?: {
+    bannerGradient?: string;
+    bannerColor?: string;
+  };
 }
 
 export interface PollOption {
@@ -16,10 +52,10 @@ export interface PollOption {
   sublabel?: string;
   bio?: string;
   achievements?: string[];
-  momentum?: number; // Votes par seconde
+  momentum?: number; 
 }
 
-export type PollType = 'STANDARD' | 'PETITION' | 'BINARY' | 'AWARD';
+export type PollType = 'STANDARD' | 'PETITION' | 'BINARY' | 'AWARD' | 'RATING';
 
 export interface Poll {
   id: string;
@@ -52,6 +88,11 @@ export interface Post {
     reposts: string;
     likes: string;
   };
+  isRepost?: boolean;
+  isArchived?: boolean; // Pour masquer du flux public mais garder en archives
+  originalAuthor?: User;
+  originalPostId?: string;
+  quotedPost?: Post; 
 }
 
 export interface Story {

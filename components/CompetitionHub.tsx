@@ -81,7 +81,7 @@ const CompetitionHub: React.FC<CompetitionHubProps> = ({ competition, onBack }) 
             <div>
               <div className="flex items-center space-x-2 mb-0.5">
                 <span className="flex items-center px-2 py-0.5 bg-red-600 text-white text-[9px] font-black uppercase rounded tracking-widest animate-pulse">En Direct</span>
-                <h1 className="text-xl font-[1000] italic uppercase tracking-tighter">{competition.title}</h1>
+                <h1 className="text-xl font-[1000] uppercase tracking-tighter">{competition.title}</h1>
               </div>
               <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Mise à jour en temps réel • {competition.totalVotes.toLocaleString()} votes</p>
             </div>
@@ -90,9 +90,9 @@ const CompetitionHub: React.FC<CompetitionHubProps> = ({ competition, onBack }) 
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Clôture dans</span>
             <div className="flex space-x-2">
-              <div className="bg-black text-white px-2 py-1 rounded font-black tabular-nums text-lg italic">02</div>
+              <div className="bg-black text-white px-2 py-1 rounded font-black tabular-nums text-lg">02</div>
               <span className="text-xl font-black">:</span>
-              <div className="bg-black text-white px-2 py-1 rounded font-black tabular-nums text-lg italic">45</div>
+              <div className="bg-black text-white px-2 py-1 rounded font-black tabular-nums text-lg">45</div>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ const CompetitionHub: React.FC<CompetitionHubProps> = ({ competition, onBack }) 
               <div key={c.id} className={`bg-white rounded-[32px] p-6 border transition-all duration-500 shadow-sm hover:shadow-md ${i === 0 ? 'border-[#5B50FF]/40 ring-1 ring-[#5B50FF]/10' : 'border-gray-100'}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-5">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-[1000] text-xl italic ${i === 0 ? 'bg-black text-white shadow-xl' : 'bg-gray-50 text-gray-300'}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-[1000] text-xl ${i === 0 ? 'bg-black text-white shadow-xl' : 'bg-gray-50 text-gray-300'}`}>
                       {i + 1}
                     </div>
                     <div className="flex items-center space-x-4">
@@ -132,7 +132,7 @@ const CompetitionHub: React.FC<CompetitionHubProps> = ({ competition, onBack }) 
                         {i === 0 && <span className="absolute -top-2 -right-2 text-2xl">👑</span>}
                       </div>
                       <div>
-                        <h3 className="text-xl font-[1000] italic uppercase tracking-tighter leading-none mb-1">{c.label}</h3>
+                        <h3 className="text-xl font-[1000] uppercase tracking-tighter leading-none mb-1">{c.label}</h3>
                         <div className="flex items-center space-x-3 text-[10px] font-black uppercase tracking-widest text-gray-400">
                           <span className="text-[#5B50FF]">{c.votes.toLocaleString()} voix</span>
                           <span>•</span>
@@ -204,7 +204,7 @@ const CompetitionHub: React.FC<CompetitionHubProps> = ({ competition, onBack }) 
 
           <div className="p-8 bg-white border-t border-gray-100">
              <div className="bg-[#5B50FF] rounded-3xl p-6 text-white shadow-xl shadow-[#5B50FF]/20">
-                <h4 className="font-black text-sm uppercase tracking-widest mb-2 italic">Besoin de plus de votes ?</h4>
+                <h4 className="font-black text-sm uppercase tracking-widest mb-2 font-black underline decoration-white/30">Besoin de plus de votes ?</h4>
                 <p className="text-[11px] opacity-80 font-bold leading-snug mb-4">Partagez cette compétition ou invitez vos amis pour recharger vos jetons.</p>
                 <button className="w-full bg-white text-[#5B50FF] py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Partager le Hub</button>
              </div>
@@ -212,7 +212,6 @@ const CompetitionHub: React.FC<CompetitionHubProps> = ({ competition, onBack }) 
         </div>
       </div>
 
-      {/* MOBILE ACTIONS */}
       <div className="lg:hidden fixed bottom-24 left-6 right-6 flex space-x-4">
         <button className="flex-1 bg-white border border-gray-200 p-5 rounded-3xl shadow-xl flex items-center justify-center space-x-3">
            <span className="text-[10px] font-black uppercase tracking-widest">Activité</span>

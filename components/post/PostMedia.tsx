@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ImageCarousel from './ImageCarousel';
 import FullscreenCarousel from './FullscreenCarousel';
+import XYImage from '../XYImage';
 
 interface PostMediaProps {
   image?: string;
@@ -17,21 +18,20 @@ const PostMedia: React.FC<PostMediaProps> = ({ image, images, video }) => {
 
   const allImages = images && images.length > 0 ? images : (image ? [image] : []);
 
-  // Intersection Observer pour Auto-play/pause
   useEffect(() => {
     if (!video || !videoRef.current) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          videoRef.current?.play().catch(() => {}); // Gérer le blocage navigateur (autoplay sans son requis souvent)
+          videoRef.current?.play().catch(() => {});
           setIsPlaying(true);
         } else {
           videoRef.current?.pause();
           setIsPlaying(false);
         }
       },
-      { threshold: 0.7 } // Se déclenche quand 70% de la vidéo est visible
+      { threshold: 0.7 }
     );
 
     if (containerRef.current) observer.observe(containerRef.current);
@@ -55,19 +55,19 @@ const PostMedia: React.FC<PostMediaProps> = ({ image, images, video }) => {
           <ImageCarousel images={allImages} onImageClick={(index) => setFullscreenIndex(index)} />
         ) : allImages.length === 1 ? (
           <div 
-            className="rounded-[22px] overflow-hidden border border-gray-100 shadow-sm bg-black aspect-video flex items-center justify-center relative cursor-pointer"
+            className="rounded-[28px] overflow-hidden border border-gray-100 shadow-sm bg-black aspect-video flex items-center justify-center relative cursor-pointer group"
             onClick={() => setFullscreenIndex(0)}
           >
-            <img 
+            <XYImage 
               src={allImages[0]} 
               alt="Post media" 
-              className="w-full h-full object-cover active:scale-[0.99] transition-transform duration-200" 
+              className="w-full h-full group-active:scale-[0.99] transition-transform duration-200" 
             />
           </div>
         ) : null}
         
         {video && (
-          <div className="rounded-[22px] overflow-hidden border border-gray-100 shadow-sm bg-black mt-2">
+          <div className="rounded-[28px] overflow-hidden border border-gray-100 shadow-sm bg-black mt-2">
             <div className="relative aspect-video flex flex-col bg-black group overflow-hidden">
               <video 
                 ref={videoRef}
@@ -76,7 +76,7 @@ const PostMedia: React.FC<PostMediaProps> = ({ image, images, video }) => {
                 muted
                 playsInline
                 className="w-full h-full cursor-pointer object-cover" 
-                poster="https://picsum.photos/seed/vid/1920/1080"
+                poster="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop"
                 onClick={togglePlay}
               />
               {!isPlaying && (
@@ -88,12 +88,6 @@ const PostMedia: React.FC<PostMediaProps> = ({ image, images, video }) => {
                   </div>
                 </div>
               )}
-              {/* Overlay minimaliste quand en lecture */}
-              <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-md px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.066.925-2.066 2.067v5.666c0 1.141.925 2.067 2.066 2.067h1.932l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06z" />
-                </svg>
-              </div>
             </div>
           </div>
         )}
